@@ -2,6 +2,8 @@ import os
 from fastapi import FastAPI, HTTPException
 import psycopg2
 
+load_dotenv()
+
 app = FastAPI()
 
 DB_CONFIG = {

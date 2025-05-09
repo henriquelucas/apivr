@@ -1,17 +1,15 @@
 # Imagem base com Python
-FROM python:3.10-slim
+FROM python:3.11-slim
 
-# Define o diretório de trabalho no container
 WORKDIR /app
 
-# Copia os arquivos da aplicação para dentro do container
-COPY . /app
+# Instala as dependências diretamente usando pip
+RUN pip install fastapi uvicorn[standard] psycopg2-binary python-dotenv
 
-# Instala as dependências
-RUN pip install --no-cache-dir fastapi[all] psycopg2
+# Copia os arquivos do projeto para dentro do container
+COPY . /app/
 
-# Expõe a porta padrão do Uvicorn
 EXPOSE 8000
 
-# Comando para rodar a aplicação com Uvicorn
+# Comando para rodar o app
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
