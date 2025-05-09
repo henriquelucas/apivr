@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI, HTTPException
 import psycopg2
+from dotenv import load_dotenv
 
 load_dotenv()
 
