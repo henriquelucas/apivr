@@ -18,51 +18,46 @@ DB_CONFIG = {
 def get_connection():
     return psycopg2.connect(**DB_CONFIG)
 
+
 @app.get("/produto/{ean}")
 def consultar_produto(ean: str):
-    conn = None
-    cur = None
     try:
         conn = get_connection()
         cur = conn.cursor()
 
-        # 1. Buscar id_produto na tabela produtoautomacao
-        cur.execute(
-            "SELECT id_produto FROM produtoautomacao WHERE codigobarras = %s",
-            (ean,)
-        )
-        result = cur.fetchone()
-        if not result:
-            raise HTTPException(
-                status_code=404,
-                detail="Produto não encontrado no produtoautomacao"
-            )
+        if ean.lower() == "all":
+            # Traz todos os produtos com join entre as tabelas
+            cur.execute("""
+                SELECT pa.id_produto, p.descricaocompleta 
+                FROM produtoautomacao pa
+                JOIN produto p ON pa.id_produto = p.id
+            """)
+            resultados = cur.fetchall()
+            produtos = [{"id_produto": row[0], "descricao": row[1]} for row in resultados]
+            return produtos
 
-        id_produto = result[0]
+        else:
+            # Buscar id_produto pela tabela produtoautomacao
+            cur.execute("SELECT id_produto FROM produtoautomacao WHERE codigobarras = %s", (ean,))
+            result = cur.fetchone()
 
-        # 2. Buscar descricao na tabela produto
-        cur.execute(
-            "SELECT descricaocompleta FROM produto WHERE id = %s",
-            (id_produto,)
-        )
-        produto = cur.fetchone()
-        if not produto:
-            raise HTTPException(
-                status_code=404,
-                detail="Produto não encontrado na tabela produtos"
-            )
+            if not result:
+                raise HTTPException(status_code=404, detail="Produto não encontrado no produtoautomacao")
 
-        return {"id_produto": id_produto, "descricao": produto[0]}
+            id_produto = result[0]
 
-    except HTTPException:
-        # redireciona HTTPExceptions sem alterar o status ou detalhe
-        raise
+            # Buscar descricao pela tabela produtos
+            cur.execute("SELECT descricaocompleta FROM produto WHERE id = %s", (id_produto,))
+            produto = cur.fetchone()
+
+            if not produto:
+                raise HTTPException(status_code=404, detail="Produto não encontrado na tabela produtos")
+
+            return {"id_produto": id_produto, "descricao": produto[0]}
+
     except Exception as e:
-        # Em caso de qualquer outro erro, retorna 500
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        # Fecha cursor e conexão apenas se existirem
-        if cur:
-            cur.close()
         if conn:
+            cur.close()
             conn.close()
