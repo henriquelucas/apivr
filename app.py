@@ -28,12 +28,19 @@ def consultar_produto(ean: str):
         if ean.lower() == "all":
             # Traz todos os produtos com join entre as tabelas
             cur.execute("""
-                SELECT pa.id_produto, p.descricaocompleta 
+                SELECT pa.id_produto, p.descricaocompleta, pc.precovenda
                 FROM produtoautomacao pa
                 JOIN produto p ON pa.id_produto = p.id
+                LEFT JOIN produtocomplemento pc ON pa.id_produto = pc.id_produto
             """)
             resultados = cur.fetchall()
-            produtos = [{"id_produto": row[0], "descricao": row[1]} for row in resultados]
+            produtos = [
+                {
+                    "id_produto": row[0],
+                    "descricao": row[1],
+                    "precovenda": float(row[2]) if row[2] is not None else None
+                } for row in resultados
+            ]
             return produtos
 
         else:
@@ -46,14 +53,23 @@ def consultar_produto(ean: str):
 
             id_produto = result[0]
 
-            # Buscar descricao pela tabela produtos
-            cur.execute("SELECT descricaocompleta FROM produto WHERE id = %s", (id_produto,))
+            # Buscar descricao e preco pela tabela produto e produtocomplemento
+            cur.execute("""
+                SELECT p.descricaocompleta, pc.precovenda
+                FROM produto p
+                LEFT JOIN produtocomplemento pc ON p.id = pc.id_produto
+                WHERE p.id = %s
+            """, (id_produto,))
             produto = cur.fetchone()
 
             if not produto:
                 raise HTTPException(status_code=404, detail="Produto não encontrado na tabela produtos")
 
-            return {"id_produto": id_produto, "descricao": produto[0]}
+            return {
+                "id_produto": id_produto,
+                "descricao": produto[0],
+                "precovenda": float(produto[1]) if produto[1] is not None else None
+            }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
