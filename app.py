@@ -1,3 +1,23 @@
+import os
+from fastapi import FastAPI, HTTPException
+import psycopg2
+from dotenv import load_dotenv
+
+load_dotenv()
+
+app = FastAPI()
+
+DB_CONFIG = {
+    "host": os.getenv("DB_HOST"),
+    "port": os.getenv("DB_PORT"),
+    "database": os.getenv("DB_NAME"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASS")
+}
+
+def get_connection():
+    return psycopg2.connect(**DB_CONFIG)
+
 @app.get("/produtos/{id_loja}/{ean}")
 def consultar_produto(id_loja: int, ean: str):
     try:
