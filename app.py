@@ -27,7 +27,7 @@ def consultar_produto(id_loja: int, ean: str):
         if ean.lower() == "all":
             # Traz todos os produtos com join entre as tabelas para a loja informada e ativos
             cur.execute("""
-                SELECT pa.id_produto, p.descricaocompleta, pc.precovenda
+                SELECT pa.id_produto, p.descricaocompleta, pc.precovenda, pc.estoque, pa.codigobarras
                 FROM produtoautomacao pa
                 JOIN produto p ON pa.id_produto = p.id
                 LEFT JOIN produtocomplemento pc 
@@ -46,20 +46,22 @@ def consultar_produto(id_loja: int, ean: str):
                 {
                     "id_produto": row[0],
                     "descricao": row[1],
-                    "precovenda": float(row[2]) if row[2] is not None else None
+                    "precovenda": float(row[2]) if row[2] is not None else None,
+                    "estoque": float(row[3]) if row[3] is not None else None,
+                    "ean": row[4]
                 } for row in resultados
             ]
             return produtos
 
         else:
-            # Buscar id_produto pela tabela produtoautomacao
-            cur.execute("SELECT id_produto FROM produtoautomacao WHERE codigobarras = %s", (ean,))
+            # Buscar id_produto e ean pela tabela produtoautomacao
+            cur.execute("SELECT id_produto, codigobarras FROM produtoautomacao WHERE codigobarras = %s", (ean,))
             result = cur.fetchone()
 
             if not result:
                 raise HTTPException(status_code=404, detail="Produto não encontrado no produtoautomacao")
 
-            id_produto = result[0]
+            id_produto, codigobarras = result
 
             # Verifica se o produto está ativo (id_situacaocadastro = 1) para a loja
             cur.execute("""
@@ -69,9 +71,9 @@ def consultar_produto(id_loja: int, ean: str):
             if not cur.fetchone():
                 raise HTTPException(status_code=404, detail="Produto inativo para esta loja")
 
-            # Buscar descricao e preco pela tabela produto e produtocomplemento
+            # Buscar descricao, preco, estoque
             cur.execute("""
-                SELECT p.descricaocompleta, pc.precovenda
+                SELECT p.descricaocompleta, pc.precovenda, pc.estoque
                 FROM produto p
                 LEFT JOIN produtocomplemento pc 
                     ON p.id = pc.id_produto 
@@ -87,7 +89,9 @@ def consultar_produto(id_loja: int, ean: str):
             return {
                 "id_produto": id_produto,
                 "descricao": produto[0],
-                "precovenda": float(produto[1]) if produto[1] is not None else None
+                "precovenda": float(produto[1]) if produto[1] is not None else None,
+                "estoque": float(produto[2]) if produto[2] is not None else None,
+                "ean": codigobarras
             }
 
     except Exception as e:
