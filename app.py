@@ -102,7 +102,7 @@ def consultar_produto(id_loja: int, ean: str):
             conn.close()
 
 # Rota para consultar produtos alterados
-@router.get("/produtosalterados/{id_loja}")
+@app.get("/produtosalterados/{id_loja}")
 def consultar_produtos_alterados(id_loja: int):
     try:
         # Estabelecendo a conexão com o banco
