@@ -1,8 +1,8 @@
-import datetime
 import os
 from fastapi import FastAPI, HTTPException
 import psycopg2
 from dotenv import load_dotenv
+from datetime import datetime
 
 load_dotenv()
 
