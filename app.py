@@ -153,4 +153,3 @@ def consultar_produtos_alterados(id_loja: int):
         if conn:
             cur.close()
             conn.close()
-
