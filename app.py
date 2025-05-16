@@ -102,18 +102,14 @@ def consultar_produto(id_loja: int, ean: str):
             cur.close()
             conn.close()
 
-# Rota para consultar produtos alterados
 @app.get("/produtosalterados/{id_loja}")
 def consultar_produtos_alterados(id_loja: int):
     try:
-        # Estabelecendo a conexão com o banco
         conn = get_connection()
         cur = conn.cursor()
 
-        # Obter a data de hoje no formato YYYY-MM-DD
         today = datetime.today().strftime('%Y-%m-%d')
 
-        # Consultar produtos alterados hoje
         cur.execute("""
             SELECT pa.id_produto, p.descricaocompleta, pc.precovenda, pc.estoque, pa.codigobarras
             FROM produtoautomacao pa
@@ -122,7 +118,7 @@ def consultar_produtos_alterados(id_loja: int):
                 ON pa.id_produto = pc.id_produto 
                 AND pc.id_loja = %s 
                 AND pc.id_situacaocadastro = 1
-            WHERE p.dataalteracao::DATE = %s  -- Filtrando produtos com data de alteração de hoje
+            WHERE p.dataalteracao::DATE = %s
             AND EXISTS (
                 SELECT 1 
                 FROM produtocomplemento sub_pc 
@@ -130,23 +126,23 @@ def consultar_produtos_alterados(id_loja: int):
                 AND sub_pc.id_loja = %s 
                 AND sub_pc.id_situacaocadastro = 1
             )
+            LIMIT 1
         """, (id_loja, today, id_loja))
         
-        resultados = cur.fetchall()
+        row = cur.fetchone()
 
-        # Processar resultados e formatar como JSON
-        produtos = [
-            {
-                "id_produto": row[0],
-                "descricao": row[1],
-                "precovenda": float(row[2]) if row[2] is not None else None,
-                "estoque": float(row[3]) if row[3] is not None else None,
-                "ean": row[4]
-            } for row in resultados
-        ]
+        if not row:
+            return {"mensagem": "Nenhum produto alterado hoje."}
 
-        # Retornar os produtos
-        return produtos
+        id_produto, descricao, precovenda, estoque, codigobarras = row
+
+        return {
+            "id_produto": id_produto,
+            "descricao": descricao,
+            "precovenda": float(precovenda) if precovenda is not None else None,
+            "estoque": float(estoque) if estoque is not None else None,
+            "ean": codigobarras
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
