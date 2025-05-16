@@ -126,23 +126,25 @@ def consultar_produtos_alterados(id_loja: int):
                 AND sub_pc.id_loja = %s 
                 AND sub_pc.id_situacaocadastro = 1
             )
-            LIMIT 1
         """, (id_loja, today, id_loja))
-        
-        row = cur.fetchone()
 
-        if not row:
+        rows = cur.fetchall()
+
+        if not rows:
             return {"mensagem": "Nenhum produto alterado hoje."}
 
-        id_produto, descricao, precovenda, estoque, codigobarras = row
+        produtos = []
+        for row in rows:
+            id_produto, descricao, precovenda, estoque, codigobarras = row
+            produtos.append({
+                "id_produto": id_produto,
+                "descricao": descricao,
+                "precovenda": float(precovenda) if precovenda is not None else None,
+                "estoque": float(estoque) if estoque is not None else None,
+                "ean": codigobarras
+            })
 
-        return {
-            "id_produto": id_produto,
-            "descricao": descricao,
-            "precovenda": float(precovenda) if precovenda is not None else None,
-            "estoque": float(estoque) if estoque is not None else None,
-            "ean": codigobarras
-        }
+        return produtos
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
