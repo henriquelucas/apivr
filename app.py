@@ -100,3 +100,57 @@ def consultar_produto(id_loja: int, ean: str):
         if conn:
             cur.close()
             conn.close()
+
+# Rota para consultar produtos alterados
+@router.get("/produtosalterados/{id_loja}")
+def consultar_produtos_alterados(id_loja: int):
+    try:
+        # Estabelecendo a conexão com o banco
+        conn = get_connection()
+        cur = conn.cursor()
+
+        # Obter a data de hoje no formato YYYY-MM-DD
+        today = datetime.today().strftime('%Y-%m-%d')
+
+        # Consultar produtos alterados hoje
+        cur.execute("""
+            SELECT pa.id_produto, p.descricaocompleta, pc.precovenda, pc.estoque, pa.codigobarras
+            FROM produtoautomacao pa
+            JOIN produto p ON pa.id_produto = p.id
+            LEFT JOIN produtocomplemento pc 
+                ON pa.id_produto = pc.id_produto 
+                AND pc.id_loja = %s 
+                AND pc.id_situacaocadastro = 1
+            WHERE p.dataalteracao::DATE = %s  -- Filtrando produtos com data de alteração de hoje
+            AND EXISTS (
+                SELECT 1 
+                FROM produtocomplemento sub_pc 
+                WHERE sub_pc.id_produto = pa.id_produto 
+                AND sub_pc.id_loja = %s 
+                AND sub_pc.id_situacaocadastro = 1
+            )
+        """, (id_loja, today, id_loja))
+        
+        resultados = cur.fetchall()
+
+        # Processar resultados e formatar como JSON
+        produtos = [
+            {
+                "id_produto": row[0],
+                "descricao": row[1],
+                "precovenda": float(row[2]) if row[2] is not None else None,
+                "estoque": float(row[3]) if row[3] is not None else None,
+                "ean": row[4]
+            } for row in resultados
+        ]
+
+        # Retornar os produtos
+        return produtos
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if conn:
+            cur.close()
+            conn.close()
+
